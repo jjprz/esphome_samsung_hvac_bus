@@ -32,7 +32,7 @@ namespace esphome
                                       climate::CLIMATE_FAN_LOW,
                                       climate::CLIMATE_FAN_AUTO});
 
-      {
+      if (device->supports_turbo_mode()) {
         static const char *CUSTOM_FAN_MODES[] = {"Turbo"};
         traits.set_supported_custom_fan_modes(CUSTOM_FAN_MODES);
       }

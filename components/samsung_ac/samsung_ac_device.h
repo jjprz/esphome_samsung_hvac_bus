@@ -441,6 +441,11 @@ namespace esphome
         return supports_vertical_swing_;
       }
 
+      bool supports_turbo_mode()
+      {
+        return supports_turbo_mode_;
+      }
+
       void set_supports_horizontal_swing(bool value)
       {
         supports_horizontal_swing_ = value;
@@ -449,6 +454,11 @@ namespace esphome
       void set_supports_vertical_swing(bool value)
       {
         supports_vertical_swing_ = value;
+      }
+
+      void set_supports_turbo_mode(bool value)
+      {
+        supports_turbo_mode_ = value;
       }
 
       void add_alt_mode(const AltModeName &name, AltMode value)
@@ -480,6 +490,7 @@ namespace esphome
     protected:
       bool supports_horizontal_swing_{false};
       bool supports_vertical_swing_{false};
+      bool supports_turbo_mode_{false};
       std::vector<AltModeDesc> alt_modes;
 
       Protocol *protocol{nullptr};
