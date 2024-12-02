@@ -68,7 +68,7 @@ namespace esphome
 
         enum class MessageNumber : uint16_t
         {
-            Undefiend = 0,
+            Undefined = 0,
             ENUM_in_operation_power = 0x4000,
             ENUM_in_operation_automatic_cleaning = 0x4111,
             ENUM_in_water_heater_power = 0x4065,
@@ -77,6 +77,15 @@ namespace esphome
             ENUM_in_fan_mode = 0x4006, // Did not exists in xml...only in Remocon.dll code
             ENUM_in_fan_mode_real = 0x4007,
             ENUM_in_alt_mode = 0x4060,
+            ENUM_in_outing_mode = 0x406D
+            ENUM_in_quiet_mode = 0x406E
+            ENUM_in_silence = 0x4046
+            ENUM_in_defrost_mode = 0x402E
+            ENUM_in_spi = 0x4023
+            ENUM_in_spi_2 = 0x4043
+            ENUM_in_filter_warning_time = 0x4024
+            ENUM_in_filter_clean = 0x4025
+            ENUM_in_filter_warning = 0x4027
             ENUM_in_louver_hl_swing = 0x4011,
             ENUM_in_louver_lr_swing = 0x407e,
             ENUM_in_state_humidity_percent = 0x4038,
@@ -134,7 +143,7 @@ namespace esphome
 
         struct MessageSet
         {
-            MessageNumber messageNumber = MessageNumber::Undefiend;
+            MessageNumber messageNumber = MessageNumber::Undefined;
             MessageSetType type = Enum;
             union
             {

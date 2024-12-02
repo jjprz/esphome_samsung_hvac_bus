@@ -923,8 +923,32 @@ namespace esphome
             case 0x4012:
                 LOG_MESSAGE(ENUM_in_louver_hl_part_swing, message.value, source, dest);
                 break;
+            case 0x4023:
+                LOG_MESSAGE(NASA_USE_SPI, message.value, source, dest);
+                break;
+            case 0x4024:
+                LOG_MESSAGE(NASA_USE_FILTER_WARNING_TIME, message.value, source, dest);
+                break;
+            case 0x4025:
+                LOG_MESSAGE(NASA_FILTER_CLEAN, message.value, source, dest);
+                break;
+            case 0x4027:
+                LOG_MESSAGE(NASA_FILTER_WARNING, message.value, source, dest);
+                break;
+            case 0x402E:
+                LOG_MESSAGE(ENUM_IN_STATE_DEFROST_MODE, message.value, source, dest);
+                break;
+            case 0x4043:
+                LOG_MESSAGE(NASA_USE_SPI, message.value, source, dest);
+                break;
+            case 0x4046:
+                LOG_MESSAGE(ENUM_IN_SILENCE, message.value, source, dest);
+                break;
             case 0x4060:
                 LOG_MESSAGE(ENUM_IN_ALTERNATIVE_MODE, message.value, source, dest);
+                break;
+            case 0x406D:
+                LOG_MESSAGE(ENUM_IN_OUTING_MODE, message.value, source, dest);
                 break;
             case 0x406E:
                 LOG_MESSAGE(ENUM_IN_QUIET_MODE, message.value, source, dest);
@@ -1059,18 +1083,12 @@ namespace esphome
             case 0x4015:
             case 0x4016:
             case 0x401b:
-            case 0x4023:
-            case 0x4024:
-            case 0x4027:
             case 0x4028:
             case 0x402d:
-            case 0x402e:
             case 0x4035:
             case 0x403e:
             case 0x403f:
-            case 0x4043:
             case 0x4045:
-            case 0x4046:
             case 0x4047:
             case 0x4048:
             case 0x4059:
