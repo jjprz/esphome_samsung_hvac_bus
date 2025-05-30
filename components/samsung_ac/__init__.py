@@ -150,7 +150,7 @@ def custom_sensor_schema(
     accuracy_decimals: int = sensor.cv.UNDEFINED,
     device_class: str = sensor.cv.UNDEFINED,
     state_class: str = sensor.cv.UNDEFINED,
-    entity_category: str = sensor.cv.UNDEFINED,
+    entity_category: str = sensor.cv.UNDEFINED, 
     raw_filters=[],
 ):
     return sensor.sensor_schema(
