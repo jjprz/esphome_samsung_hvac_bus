@@ -691,6 +691,12 @@ namespace esphome
                 target->set_swing_horizontal(source, message.value == 1);
                 break;
             }
+            case MessageNumber::ENUM_in_defrost_mode:
+            {
+                LOG_MESSAGE(ENUM_in_defrost_mode, (double)message.value, source, dest);
+                target->set_defrost_mode(source, message.value);
+                break;
+            }
             case MessageNumber::VAR_in_temp_water_tank_f:
             {
                 LOG_MESSAGE(VAR_in_temp_water_tank_f, (double)message.value, source, dest);

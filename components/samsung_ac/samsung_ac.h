@@ -198,6 +198,12 @@ namespace esphome
                                  { dev->update_error_code(value); });
       }
 
+      void set_defrost_mode(const std::string address, int value) override
+      {
+        execute_if_device_exists(address, [value](Samsung_AC_Device *dev)
+                                 { dev->update_defrost_mode(value); });
+      }
+
       void set_outdoor_instantaneous_power(const std::string &address, float value)
       {
         update_device_sensor(address, &Samsung_AC_Device::outdoor_instantaneous_power, value);
