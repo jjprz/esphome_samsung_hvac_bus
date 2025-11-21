@@ -392,6 +392,7 @@ namespace esphome
                 packet.messages.push_back(mode);
             }
 
+            
             if (request.waterheatermode)
             {
                 request.water_heater_power = true; // ensure system turns on when mode is set
