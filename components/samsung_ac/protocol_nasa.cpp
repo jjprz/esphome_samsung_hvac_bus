@@ -712,6 +712,12 @@ namespace esphome
                 target->set_power(source, message.value != 0);
                 break;
             }
+            case MessageNumber::ENUM_in_operation_defrosting:
+            {
+                LOG_MESSAGE(ENUM_in_operation_defrosting, (double)message.value, source, dest);
+                target->set_defrosting(source, message.value != 0);
+                break;
+            }
             case MessageNumber::ENUM_in_operation_automatic_cleaning:
             {
                 LOG_MESSAGE(ENUM_in_operation_automatic_cleaning, (double)message.value, source, dest);

@@ -6,6 +6,7 @@
 #include "esphome/core/helpers.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/components/sensor/sensor.h"
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/select/select.h"
 #include "esphome/components/number/number.h"
 #include "esphome/components/climate/climate.h"
@@ -121,6 +122,7 @@ namespace esphome
       Samsung_AC_Switch *power{nullptr};
       Samsung_AC_Switch *automatic_cleaning{nullptr};
       Samsung_AC_Switch *water_heater_power{nullptr};
+      binary_sensor::BinarySensor *defrosting{nullptr};
       Samsung_AC_Mode_Select *mode{nullptr};
       Samsung_AC_Water_Heater_Mode_Select *waterheatermode{nullptr};
       Samsung_AC_Climate *climate{nullptr};
@@ -153,9 +155,12 @@ namespace esphome
           error_code->publish_state(value);
       }
 
-      void set_outdoor_instantaneous_power_sensor(sensor::Sensor *sensor)
+      void set_outdoor_instantaneous_power(const std::string &address, float value)
       {
-        outdoor_instantaneous_power = sensor;
+        execute_if_device_exists(address, [value](Samsung_AC_Device *dev)
+        {
+          dev->update_outdoor_instantaneous_power(value);
+        });
       }
 
       void set_outdoor_cumulative_energy_sensor(sensor::Sensor *sensor)
@@ -171,6 +176,11 @@ namespace esphome
       void set_outdoor_voltage_sensor(sensor::Sensor *sensor)
       {
         outdoor_voltage = sensor;
+      }
+
+      void set_defrosting_binary_sensor(binary_sensor::BinarySensor *sensor)
+      {
+        defrosting = sensor;
       }
 
       void set_outdoor_temperature_sensor(sensor::Sensor *sensor)
@@ -337,6 +347,8 @@ namespace esphome
 
       optional<bool> _cur_power;
       optional<bool> _cur_automatic_cleaning;
+      optional<bool> _cur_defrosting;
+      optional<float> _cur_outdoor_instantaneous_power;
       optional<bool> _cur_water_heater_power;
       optional<Mode> _cur_mode;
       optional<WaterHeaterMode> _cur_water_heater_mode;
@@ -358,6 +370,17 @@ namespace esphome
         if (climate != nullptr)
           calc_and_publish_mode();
       }
+
+      void update_defrosting(bool value)
+      {
+        _cur_defrosting = value;
+        if (defrosting != nullptr)
+          defrosting->publish_state(value);
+        if (climate != nullptr)
+          calc_and_publish_mode();
+      }
+
+      void update_outdoor_instantaneous_power(float value);
 
       void update_water_heater_power(bool value)
       {
@@ -509,12 +532,49 @@ namespace esphome
         if (!_cur_mode.has_value())
           return;
 
+        // mode
         climate->mode = climate::ClimateMode::CLIMATE_MODE_OFF;
         if (_cur_power.value() == true)
         {
           auto opt = mode_to_climatemode(_cur_mode.value());
           if (opt.has_value())
             climate->mode = opt.value();
+        }
+
+        // action (hvac_action in Home Assistant)
+        if (climate->mode == climate::CLIMATE_MODE_OFF)
+        {
+          climate->action = climate::CLIMATE_ACTION_OFF;
+        }
+        else if (
+          (_cur_defrosting.has_value() && _cur_defrosting.value()) ||
+          (_cur_outdoor_instantaneous_power.has_value() &&
+           _cur_outdoor_instantaneous_power.value() < 1.0f)  // kW
+        )
+        {
+          // ESPHome doesn't have a DEFROSTING action; expose defrosting via binary_sensor and map in HA.
+          climate->action = climate::CLIMATE_ACTION_IDLE;
+        }
+        else
+        {
+          switch (climate->mode)
+          {
+          case climate::CLIMATE_MODE_COOL:
+            climate->action = climate::CLIMATE_ACTION_COOLING;
+            break;
+          case climate::CLIMATE_MODE_HEAT:
+            climate->action = climate::CLIMATE_ACTION_HEATING;
+            break;
+          case climate::CLIMATE_MODE_DRY:
+            climate->action = climate::CLIMATE_ACTION_DRYING;
+            break;
+          case climate::CLIMATE_MODE_FAN_ONLY:
+            climate->action = climate::CLIMATE_ACTION_FAN;
+            break;
+          default:
+            climate->action = climate::CLIMATE_ACTION_IDLE;
+            break;
+          }
         }
 
         climate->publish_state();

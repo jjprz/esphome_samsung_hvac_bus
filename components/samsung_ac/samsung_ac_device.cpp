@@ -192,5 +192,19 @@ namespace esphome
       }
     }
 
+    void Samsung_AC_Device::update_outdoor_instantaneous_power(float value)
+    {
+      _cur_outdoor_instantaneous_power = value;
+
+      // Publicar el sensor (lo que ya hacías antes)
+      if (outdoor_instantaneous_power != nullptr)
+      {
+        this->update_sensor_state(outdoor_instantaneous_power, value);
+      }
+
+      // Recalcular hvac_action (por consumo)
+      this->publish_state();
+    }
+
   } // namespace samsung_ac
 } // namespace esphome

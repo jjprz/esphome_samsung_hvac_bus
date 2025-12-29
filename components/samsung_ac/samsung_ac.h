@@ -170,7 +170,13 @@ namespace esphome
       void set_automatic_cleaning(const std::string address, bool value) override
       {
         execute_if_device_exists(address, [value](Samsung_AC_Device *dev)
-                                 { dev->update_automatic_cleaning(value); });
+                                 { dev->update_automatic_cleaning(value); }
+      void set_defrosting(const std::string address, bool value) override
+      {
+        execute_if_device_exists(address, [value](Samsung_AC_Device *dev)
+                                 { dev->update_defrosting(value); });
+      }
+);
       }
 
       void set_water_heater_power(const std::string address, bool value) override
