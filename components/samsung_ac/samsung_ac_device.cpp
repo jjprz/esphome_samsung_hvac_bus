@@ -28,7 +28,7 @@ namespace esphome
                                   climate::CLIMATE_MODE_HEAT});
 
       traits.set_supported_fan_modes({climate::CLIMATE_FAN_HIGH,
-                                      climate::CLIMATE_FAN_MIDDLE,
+                                      climate::CLIMATE_FAN_MEDIUM,
                                       climate::CLIMATE_FAN_LOW,
                                       climate::CLIMATE_FAN_AUTO});
 
