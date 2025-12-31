@@ -494,6 +494,10 @@ namespace esphome
         room_temperature_offset = value;
       }
 
+      void set_outdoor_instantaneous_power_sensor(sensor::Sensor *sensor) {
+        outdoor_instantaneous_power = sensor;
+      }
+
       void protocol_update(MessageTarget *target)
       {
         if (protocol != nullptr)
