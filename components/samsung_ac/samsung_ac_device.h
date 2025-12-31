@@ -189,6 +189,10 @@ namespace esphome
       {
         indoor_eva_out_temperature = sensor;
       }
+      
+      void set_outdoor_instantaneous_power_sensor(sensor::Sensor *sensor) {
+        outdoor_instantaneous_power = sensor;
+      }
 
       void update_custom_sensor(uint16_t message_number, float value)
       {
@@ -372,8 +376,6 @@ namespace esphome
           calc_and_publish_mode();
       }
 
-      void update_outdoor_instantaneous_power(float value);
-
       void update_water_heater_power(bool value)
       {
         _cur_water_heater_power = value;
@@ -492,10 +494,6 @@ namespace esphome
       void set_room_temperature_offset(float value)
       {
         room_temperature_offset = value;
-      }
-
-      void set_outdoor_instantaneous_power_sensor(sensor::Sensor *sensor) {
-        outdoor_instantaneous_power = sensor;
       }
 
       void protocol_update(MessageTarget *target)
