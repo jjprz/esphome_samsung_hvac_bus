@@ -167,18 +167,19 @@ namespace esphome
         execute_if_device_exists(address, [value](Samsung_AC_Device *dev)
                                  { dev->update_power(value); });
       }
+      
       void set_automatic_cleaning(const std::string address, bool value) override
       {
         execute_if_device_exists(address, [value](Samsung_AC_Device *dev)
-                                 { dev->update_automatic_cleaning(value); }
+                                 { dev->update_automatic_cleaning(value); });
+      }
+      
       void set_defrosting(const std::string address, bool value) override
       {
         execute_if_device_exists(address, [value](Samsung_AC_Device *dev)
                                  { dev->update_defrosting(value); });
       }
-);
-      }
-
+      
       void set_water_heater_power(const std::string address, bool value) override
       {
         execute_if_device_exists(address, [value](Samsung_AC_Device *dev)
@@ -235,7 +236,9 @@ namespace esphome
 
       void set_outdoor_instantaneous_power(const std::string &address, float value)
       {
-        update_device_sensor(address, &Samsung_AC_Device::outdoor_instantaneous_power, value);
+        execute_if_device_exists(address, [value](Samsung_AC_Device *dev) {
+          dev->update_outdoor_instantaneous_power(value);
+        });
       }
 
       void set_outdoor_cumulative_energy(const std::string &address, float value)

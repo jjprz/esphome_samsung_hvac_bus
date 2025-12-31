@@ -201,9 +201,7 @@ namespace esphome
       {
         this->update_sensor_state(outdoor_instantaneous_power, value);
       }
-
-      // Recalcular hvac_action (por consumo)
-      this->publish_state();
+      
     }
 
   } // namespace samsung_ac

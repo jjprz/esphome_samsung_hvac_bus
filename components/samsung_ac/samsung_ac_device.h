@@ -155,14 +155,6 @@ namespace esphome
           error_code->publish_state(value);
       }
 
-      void set_outdoor_instantaneous_power(const std::string &address, float value)
-      {
-        execute_if_device_exists(address, [value](Samsung_AC_Device *dev)
-        {
-          dev->update_outdoor_instantaneous_power(value);
-        });
-      }
-
       void set_outdoor_cumulative_energy_sensor(sensor::Sensor *sensor)
       {
         outdoor_cumulative_energy = sensor;
