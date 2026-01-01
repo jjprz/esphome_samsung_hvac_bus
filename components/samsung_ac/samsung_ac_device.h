@@ -376,6 +376,8 @@ namespace esphome
           calc_and_publish_mode();
       }
 
+      void update_outdoor_instantaneous_power(float value);
+
       void update_water_heater_power(bool value)
       {
         _cur_water_heater_power = value;
