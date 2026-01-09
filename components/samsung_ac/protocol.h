@@ -100,6 +100,9 @@ namespace esphome
             virtual void set_outdoor_cumulative_energy(const std::string &address, float value) = 0;
             virtual void set_outdoor_current(const std::string &address, float value) = 0;
             virtual void set_outdoor_voltage(const std::string &address, float value) = 0;
+            virtual void set_sleep_mode(const std::string address, bool value) = 0;
+            virtual void set_outing_mode(const std::string address, bool value) = 0;
+            virtual void set_quiet_mode(const std::string address, bool value) = 0;
         };
 
         struct ProtocolRequest
@@ -116,6 +119,9 @@ namespace esphome
             optional<FanMode> fan_mode;
             optional<SwingMode> swing_mode;
             optional<AltMode> alt_mode;
+            optional<bool> sleep_mode;
+            optional<bool> outing_mode;
+            optional<bool> quiet_mode;
         };
 
         class Protocol

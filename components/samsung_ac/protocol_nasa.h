@@ -95,6 +95,8 @@ namespace esphome
             LVAR_OUT_CONTROL_WATTMETER_ALL_UNIT_ACCUM = 0x8414,
             VAR_OUT_SENSOR_CT1 = 0x8217,
             LVAR_NM_OUT_SENSOR_VOLTAGE = 0x24fc,
+            ENUM_IN_OUTING_MODE = 0x406D,
+            ENUM_IN_QUIET_MODE = 0x406E
         };
 
         struct Address

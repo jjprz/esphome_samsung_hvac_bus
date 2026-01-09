@@ -256,6 +256,24 @@ namespace esphome
         update_device_sensor(address, &Samsung_AC_Device::outdoor_voltage, value);
       }
 
+      void set_sleep_mode(const std::string address, bool value) override {
+        execute_if_device_exists(address, [value](Samsung_AC_Device *dev) {
+          dev->update_sleep_mode(value);
+        });
+      }
+
+      void set_outing_mode(const std::string address, bool value) override {
+        execute_if_device_exists(address, [value](Samsung_AC_Device *dev) {
+          dev->update_outing_mode(value);
+        });
+      }
+
+      void set_quiet_mode(const std::string address, bool value) override {
+        execute_if_device_exists(address, [value](Samsung_AC_Device *dev) {
+          dev->update_quiet_mode(value);
+        });
+      }
+
     protected:
       Samsung_AC_Device *find_device(const std::string &address)
       {

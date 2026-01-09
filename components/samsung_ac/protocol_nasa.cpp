@@ -494,11 +494,25 @@ namespace esphome
                     packet.messages.push_back(fanmode);
                 }
 
-                if (request.alt_mode)
+                if (request.sleep_mode)
                 {
-                    MessageSet altmode(MessageNumber::ENUM_in_alt_mode);
-                    altmode.value = request.alt_mode.value();
-                    packet.messages.push_back(altmode);
+                    MessageSet sleep(MessageNumber::ENUM_in_alt_mode);  // 0x4060
+                    sleep.value = request.sleep_mode.value() ? 1 : 0;
+                    packet.messages.push_back(sleep);
+                }
+
+                if (request.outing_mode)
+                {
+                    MessageSet outing(MessageNumber::ENUM_in_outing_mode); // 0x406D
+                    outing.value = request.outing_mode.value() ? 1 : 0;
+                    packet.messages.push_back(outing);
+                }
+
+                if (request.quiet_mode)
+                {
+                    MessageSet quiet(MessageNumber::ENUM_in_quiet_mode); // 0x406E
+                    quiet.value = request.quiet_mode.value() ? 1 : 0;
+                    packet.messages.push_back(quiet);
                 }
 
                 if (request.swing_mode)
@@ -559,8 +573,14 @@ namespace esphome
             if (request.fan_mode)
                 queued.fan_mode = request.fan_mode;
 
-            if (request.alt_mode)
-                queued.alt_mode = request.alt_mode;
+            if (request.sleep_mode)
+                queued.sleep_mode = request.sleep_mode;
+
+            if (request.outing_mode)
+                queued.outing_mode = request.outing_mode;
+
+            if (request.quiet_mode)
+                queued.quiet_mode = request.quiet_mode;
 
             if (request.swing_mode)
                 queued.swing_mode = request.swing_mode;
@@ -767,7 +787,7 @@ namespace esphome
             case MessageNumber::ENUM_in_alt_mode:
             {
                 LOG_MESSAGE(ENUM_in_alt_mode, (double)message.value, source, dest);
-                target->set_altmode(source, message.value);
+                target->set_sleep_mode(source, message.value != 0);
                 break;
             }
             case MessageNumber::ENUM_in_louver_hl_swing:
@@ -844,6 +864,18 @@ namespace esphome
                 double value = static_cast<double>(message.value);
                 LOG_MESSAGE(LVAR_NM_OUT_SENSOR_VOLTAGE, value, source, dest);
                 target->set_outdoor_voltage(source, value);
+                break;
+            }
+            case MessageNumber::ENUM_in_outing_mode:
+            {
+                LOG_MESSAGE(ENUM_in_outing_mode, (double)message.value, source, dest);
+                target->set_outing_mode(source, message.value != 0);
+                break;
+            }
+            case MessageNumber::ENUM_in_quiet_mode:
+            {
+                LOG_MESSAGE(ENUM_in_quiet_mode, (double)message.value, source, dest);
+                target->set_quiet_mode(source, message.value != 0);
                 break;
             }
             default:

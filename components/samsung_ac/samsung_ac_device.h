@@ -128,6 +128,9 @@ namespace esphome
       Samsung_AC_Climate *climate{nullptr};
       std::map<uint16_t, sensor::Sensor *> custom_sensor_map;
       float room_temperature_offset{0};
+      Samsung_AC_Switch *sleep_mode{nullptr};
+      Samsung_AC_Switch *outing_mode{nullptr};
+      Samsung_AC_Switch *quiet_mode{nullptr};
 
       template <typename SwingType>
       void update_swing(SwingType &swing_variable, uint8_t mask, bool value)
@@ -348,6 +351,9 @@ namespace esphome
       optional<bool> _cur_water_heater_power;
       optional<Mode> _cur_mode;
       optional<WaterHeaterMode> _cur_water_heater_mode;
+      optional<bool> _cur_sleep_mode;
+      optional<bool> _cur_outing_mode;
+      optional<bool> _cur_quiet_mode;
 
       void update_power(bool value)
       {
@@ -505,6 +511,49 @@ namespace esphome
           protocol->protocol_update(target);
         }
       }
+
+      void set_sleep_mode_switch(Samsung_AC_Switch *sw) {
+        sleep_mode = sw;
+        sleep_mode->write_state_ = [this](bool value) {
+          ProtocolRequest req;
+          req.sleep_mode = value;
+          publish_request(req);
+        };
+      }
+
+      void set_outing_mode_switch(Samsung_AC_Switch *sw) {
+        outing_mode = sw;
+        outing_mode->write_state_ = [this](bool value) {
+          ProtocolRequest req;
+          req.outing_mode = value;
+          publish_request(req);
+        };
+      }
+
+      void set_quiet_mode_switch(Samsung_AC_Switch *sw) {
+        quiet_mode = sw;
+        quiet_mode->write_state_ = [this](bool value) {
+          ProtocolRequest req;
+          req.quiet_mode = value;
+          publish_request(req);
+        };
+      }
+
+      void update_sleep_mode(bool value) {
+        _cur_sleep_mode = value;
+        if (sleep_mode) sleep_mode->publish_state(value);
+      }
+
+      void update_outing_mode(bool value) {
+        _cur_outing_mode = value;
+        if (outing_mode) outing_mode->publish_state(value);
+      }
+
+      void update_quiet_mode(bool value) {
+        _cur_quiet_mode = value;
+        if (quiet_mode) quiet_mode->publish_state(value);
+      }
+
 
     protected:
       bool supports_horizontal_swing_{false};
