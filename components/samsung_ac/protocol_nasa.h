@@ -120,8 +120,6 @@ namespace esphome
 
             ENUM_in_louver_hl_part_swing = 0x4012,
 
-            ENUM_IN_QUIET_MODE = 0x406e,
-
             ENUM_IN_OPERATION_POWER_ZONE1 = 0x4119,
             ENUM_IN_OPERATION_POWER_ZONE2 = 0x411e,
 

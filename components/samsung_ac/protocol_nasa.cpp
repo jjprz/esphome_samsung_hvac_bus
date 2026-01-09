@@ -867,6 +867,18 @@ namespace esphome
                 target->set_sleep_mode(source, message.value != 0);
                 break;
             }
+            case MessageNumber::ENUM_in_outing_mode:
+            {
+                LOG_MESSAGE(ENUM_in_outing_mode, (double)message.value, source, dest);
+                target->set_outing_mode(source, message.value != 0);
+                break;
+            }
+            case MessageNumber::ENUM_in_quiet_mode:
+            {
+                LOG_MESSAGE(ENUM_in_quiet_mode, (double)message.value, source, dest);
+                target->set_quiet_mode(source, message.value != 0);
+                break;
+            }
             case MessageNumber::ENUM_in_louver_hl_swing:
             {
                 LOG_MESSAGE(ENUM_in_louver_hl_swing, (double)message.value, source, dest);
@@ -963,18 +975,6 @@ namespace esphome
                 double value = static_cast<double>(message.value);
                 LOG_MESSAGE(LVAR_NM_OUT_SENSOR_VOLTAGE, value, source, dest);
                 target->set_outdoor_voltage(source, value);
-                break;
-            }
-            case MessageNumber::ENUM_in_outing_mode:
-            {
-                LOG_MESSAGE(ENUM_in_outing_mode, (double)message.value, source, dest);
-                target->set_outing_mode(source, message.value != 0);
-                break;
-            }
-            case MessageNumber::ENUM_in_quiet_mode:
-            {
-                LOG_MESSAGE(ENUM_in_quiet_mode, (double)message.value, source, dest);
-                target->set_quiet_mode(source, message.value != 0);
                 break;
             }
             case MessageNumber::VAR_IN_FSV_3021:
@@ -1129,16 +1129,22 @@ namespace esphome
                 LOG_MESSAGE(ENUM_in_alt_mode, message.value, source, dest);
                 break;
 
-            case MessageNumber::ENUM_IN_QUIET_MODE:
-                LOG_MESSAGE(ENUM_IN_QUIET_MODE, message.value, source, dest);
+            case MessageNumber::ENUM_in_outing_mode:
+                LOG_MESSAGE(ENUM_in_outing_mode, (double)message.value, source, dest);
+                break;
+
+            case MessageNumber::ENUM_in_quiet_mode:
+                LOG_MESSAGE(ENUM_in_quiet_mode, (double)message.value, source, dest);
                 break;
 
             case MessageNumber::ENUM_IN_OPERATION_POWER_ZONE1:
                 LOG_MESSAGE(ENUM_IN_OPERATION_POWER_ZONE1, message.value, source, dest);
                 break;
+
             case MessageNumber::ENUM_IN_OPERATION_POWER_ZONE2:
                 LOG_MESSAGE(ENUM_IN_OPERATION_POWER_ZONE2, message.value, source, dest);
                 break;
+                
             case MessageNumber::ENUM_in_operation_mode_real:
                 LOG_MESSAGE(ENUM_in_operation_mode_real, message.value, source, dest);
                 break;
