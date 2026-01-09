@@ -15,6 +15,107 @@ namespace esphome
 {
     namespace samsung_ac
     {
+        static bool pending_keepalive_ = false;
+        static uint32_t pending_keepalive_due_ms_ = 0;
+        static uint32_t last_keepalive_sent_ms_ = 0;
+        constexpr uint32_t KEEPALIVE_DELAY_MS = 30;
+        constexpr uint32_t KEEPALIVE_MIN_INTERVAL_MS = 5000;
+
+        // Track cumulative energy calculation per device address
+        // Note: Energy tracker persists across device reconnections. This is intentional to maintain
+        // cumulative energy across device restarts. The tracker is keyed by device address, so if
+        // a device is removed and re-added with the same address, energy continues accumulating.
+        // Note: Uses double for accumulated_energy_kwh to maintain precision during long-term accumulation,
+        // matching NASA protocol approach. Converted to float only when publishing (API requirement).
+        struct CumulativeEnergyTracker
+        {
+            double accumulated_energy_kwh = 0.0; // Accumulated energy in kWh (double for precision)
+            uint32_t last_update_time_ms = 0;    // Last time power was updated (milliseconds)
+            float last_power_w = 0.0f;           // Last power value in Watts
+            bool has_previous_update = false;    // Track if we've had at least one update (handles millis()=0 edge case)
+        };
+
+        std::map<std::string, CumulativeEnergyTracker> cumulative_energy_trackers_;
+
+        // Energy calculation constants
+        // MIN_DELTA_MS: Minimum time delta between energy updates (100ms)
+        //   - Skips calculations for very small intervals (negligible energy)
+        //   - Reduces unnecessary CPU usage and improves precision
+        // MAX_DELTA_MS: Maximum time delta between energy updates (1 hour)
+        //   - Caps maximum delta to avoid huge increments from stale data
+        //   - Prevents unrealistic energy calculations from long gaps
+        constexpr uint32_t MIN_DELTA_MS = 100;     // Minimum 100ms between energy updates
+        constexpr uint32_t MAX_DELTA_MS = 3600000; // Maximum 1 hour (3600000 ms) between updates
+
+        // Helper function to update cumulative energy tracker
+        // This function handles all edge cases: wraparound, first update, time delta validation, and energy calculation
+        // Uses trapezoidal rule for energy calculation: Energy = Average_Power (W) × Time (hours)
+        // Returns true if energy was calculated and tracker was updated, false otherwise
+        static bool update_cumulative_energy_tracker(CumulativeEnergyTracker &tracker, float current_power_w, uint32_t now)
+        {
+            // Clamp power to non-negative: HVAC systems consume power (positive values)
+            // Negative values would indicate measurement error or sensor issues
+            if (current_power_w < 0.0f)
+            {
+                if (debug_log_messages)
+                {
+                    LOGW("Cmd8D: Negative power detected (%.2f W), clamping to 0", current_power_w);
+                }
+                current_power_w = 0.0f;
+            }
+
+            // Handle first update: just store values, don't calculate energy yet
+            if (!tracker.has_previous_update)
+            {
+                tracker.last_power_w = current_power_w;
+                tracker.last_update_time_ms = now;
+                tracker.has_previous_update = true;
+                return false; // No energy calculated on first update
+            }
+
+            // Calculate time delta, handling millis() wraparound (occurs every ~49.7 days)
+            uint32_t delta_ms;
+            if (now >= tracker.last_update_time_ms)
+            {
+                delta_ms = now - tracker.last_update_time_ms;
+            }
+            else
+            {
+                // Wraparound detected: calculate from last_update_time_ms to UINT32_MAX, then from 0 to now
+                delta_ms = (UINT32_MAX - tracker.last_update_time_ms) + now + 1;
+            }
+
+            // Validate time delta: skip if too small (negligible energy) or too large (stale data)
+            if (delta_ms < MIN_DELTA_MS)
+            {
+                return false; // Skip calculation for very small intervals
+            }
+            if (delta_ms > MAX_DELTA_MS)
+            {
+                if (debug_log_messages)
+                {
+                    LOGW("Cmd8D: Large time delta detected (%u ms, ~%.1f hours), capping to 1 hour", delta_ms, delta_ms / 3600000.0f);
+                }
+                delta_ms = MAX_DELTA_MS; // Cap to 1 hour
+            }
+
+            // Calculate energy using trapezoidal rule: Energy = Average_Power (W) × Time (hours)
+            // Average power = (last_power + current_power) / 2
+            // Time in hours = delta_ms / (1000 * 3600)
+            // Energy in kWh = (Average_Power (W) × Time (hours)) / 1000
+            double average_power_w = (static_cast<double>(tracker.last_power_w) + static_cast<double>(current_power_w)) / 2.0;
+            double time_hours = static_cast<double>(delta_ms) / 3600000.0; // Convert ms to hours
+            double energy_kwh = (average_power_w * time_hours) / 1000.0;   // Convert W×h to kWh
+
+            // Accumulate energy
+            tracker.accumulated_energy_kwh += energy_kwh;
+
+            // Update tracker state
+            tracker.last_power_w = current_power_w;
+            tracker.last_update_time_ms = now;
+
+            return true; // Energy was calculated and tracker was updated
+        }
         std::list<NonNasaRequestQueueItem> nonnasa_requests;
         bool controller_registered = false;
         bool indoor_unit_awake = true;
@@ -61,6 +162,15 @@ namespace esphome
         {
             std::string str;
             str += "ou_sump_temp[°C]:" + std::to_string(outdoor_unit_sump_temp_c);
+            return str;
+        }
+
+        std::string NonNasaCommand8D::to_string()
+        {
+            std::string str;
+            str += "inverter_current[A]:" + std::to_string(inverter_current_a) + "; ";
+            str += "inverter_voltage[V]:" + std::to_string(inverter_voltage_v) + "; ";
+            str += "inverter_power[W]:" + std::to_string(inverter_power_w);
             return str;
         }
 
@@ -129,6 +239,11 @@ namespace esphome
             case NonNasaCommand::CmdC6:
             {
                 str += "commandC6:{" + commandC6.to_string() + "}";
+                break;
+            }
+            case NonNasaCommand::Cmd8D:
+            {
+                str += "command8D:{" + command8D.to_string() + "}";
                 break;
             }
             case NonNasaCommand::CmdF0:
@@ -227,6 +342,29 @@ namespace esphome
                 commandC6.control_status = data[4];
                 return {DecodeResultType::Processed, 14};
 
+            case NonNasaCommand::Cmd8D:
+                // Cmd8D from outdoor unit - contains power/energy data
+                // Format: current raw value = data[8], voltage = data[10] * 2
+                //
+                // Power calculation consistency explanation:
+                // The current sensor has a filter (multiply: 0.1) that will apply to the published current value.
+                // To maintain the fundamental relationship: published_power = published_current × published_voltage,
+                // we must apply the same 0.1 multiplier to the power calculation.
+                //
+                // Example: raw_current=100, raw_voltage=120 (raw)
+                //   - Calculated current = 100 / 10 = 10A
+                //   - Published current = 10 * 0.1 = 1A (after filter)
+                //   - Calculated voltage = 120 * 2 = 240V
+                //   - Published voltage = 240V (no filter)
+                //   - Calculated power = (100 / 10) * 0.1 * (120 * 2) = 1 * 240 = 240W
+                //   - Published power = 240W
+                //   - Verification: 1A × 240V = 240W ✓
+                //
+                command8D.inverter_current_a = (float)data[8] / 10;                                              // Current in Amps (raw value / 10)
+                command8D.inverter_voltage_v = (float)data[10] * 2;                                              // Voltage in Volts (raw value * 2)
+                command8D.inverter_power_w = command8D.inverter_current_a * 0.1f * command8D.inverter_voltage_v; // Power in Watts
+                return {DecodeResultType::Processed, 14};
+
             case NonNasaCommand::CmdF0:
                 commandF0.outdoor_unit_freeze_protection = data[4] & 0b10000000;
                 commandF0.outdoor_unit_heating_overload = data[4] & 0b01000000;
@@ -252,7 +390,7 @@ namespace esphome
                 commandF3.inverter_total_capacity_requirement_kw = (float)data[5] / 10;
                 commandF3.inverter_current_a = (float)data[8] / 10;
                 commandF3.inverter_voltage_v = (float)data[9] * 2;
-                commandF3.inverter_power_w = commandF3.inverter_current_a * commandF3.inverter_voltage_v;
+                commandF3.inverter_power_w = commandF3.inverter_current_a * 0.1f * commandF3.inverter_voltage_v;
                 return {DecodeResultType::Processed, 14};
 
             default:
@@ -308,6 +446,40 @@ namespace esphome
             }
         }
 
+        NonNasaWindDirection swingmode_to_wind_direction(SwingMode swing)
+        {
+            switch (swing)
+            {
+            case SwingMode::Fix:
+                return NonNasaWindDirection::Stop;
+            case SwingMode::Vertical:
+                return NonNasaWindDirection::Vertical;
+            case SwingMode::Horizontal:
+                return NonNasaWindDirection::Horizontal;
+            case SwingMode::All:
+                return NonNasaWindDirection::FourWay;
+            default:
+                return NonNasaWindDirection::Stop;
+            }
+        }
+
+        uint8_t encode_request_wind_direction(NonNasaWindDirection wind_dir)
+        {
+            switch (wind_dir)
+            {
+            case NonNasaWindDirection::Stop:
+                return 0x1F;
+            case NonNasaWindDirection::Vertical:
+                return 0x1A;
+            case NonNasaWindDirection::Horizontal:
+                return 0x1B;
+            case NonNasaWindDirection::FourWay:
+                return 0x1C;
+            default:
+                return 0x1F; // Default: swing off
+            }
+        }
+
         std::vector<uint8_t> NonNasaRequest::encode()
         {
             std::vector<uint8_t> data{
@@ -315,7 +487,7 @@ namespace esphome
                 0xD0,                     // 01 src
                 (uint8_t)hex_to_int(dst), // 02 dst
                 0xB0,                     // 03 cmd
-                0x1F,                     // 04 ?
+                0x1F,                     // 04 swing
                 0x04,                     // 05 ?
                 0,                        // 06 temp + fanmode
                 0,                        // 07 operation mode
@@ -331,6 +503,7 @@ namespace esphome
             // seems to be like a building management system.
             bool individual = false;
 
+            data[4] = encode_request_wind_direction(wind_direction);
             if (room_temp > 0)
                 data[5] = room_temp;
             data[6] = (target_temp & 31U) | encode_request_fanspeed(fanspeed);
@@ -340,8 +513,6 @@ namespace esphome
             data[9] = (uint8_t)0x21;
             data[12] = build_checksum(data);
 
-            data[9] = (uint8_t)0x21;
-
             return data;
         }
 
@@ -350,12 +521,17 @@ namespace esphome
             NonNasaRequest request;
             request.dst = dst_address;
 
-            auto last_command20_ = last_command20s_[dst_address];
-            request.room_temp = last_command20_.room_temp;
-            request.power = last_command20_.power;
-            request.target_temp = last_command20_.target_temp;
-            request.fanspeed = last_command20_.fanspeed;
-            request.mode = last_command20_.mode;
+            auto it = last_command20s_.find(dst_address);
+            if (it != last_command20s_.end())
+            {
+                auto &last_command20_ = it->second;
+                request.room_temp = last_command20_.room_temp;
+                request.power = last_command20_.power;
+                request.target_temp = last_command20_.target_temp;
+                request.fanspeed = last_command20_.fanspeed;
+                request.mode = last_command20_.mode;
+                request.wind_direction = last_command20_.wind_direction;
+            }
 
             return request;
         }
@@ -421,7 +597,8 @@ namespace esphome
 
             if (request.swing_mode)
             {
-                LOGW("change swingmode is currently not implemented");
+                NonNasaWindDirection wind_dir = swingmode_to_wind_direction(request.swing_mode.value());
+                req.wind_direction = wind_dir;
             }
 
             // Add to the queue with the current time
@@ -555,13 +732,49 @@ namespace esphome
                 // packet, so as a backup approach check if the state of the device matches that of the
                 // sent control packet. This also serves as a backup approach if for some reason a device
                 // doesn't send control_acknowledgement messages at all.
+                if (debug_log_messages)
+                {
+                    // signature: same fields -> same signature
+                    // Using a small packed int is enough for change detection
+                    uint32_t sig = 0;
+                    sig ^= ((uint32_t)(nonpacket_.command20.target_temp & 0x7F));
+                    sig ^= ((uint32_t)(nonpacket_.command20.room_temp & 0x7F)) << 7;
+                    sig ^= ((uint32_t)(nonpacket_.command20.pipe_in & 0x7F)) << 14;
+                    sig ^= ((uint32_t)(nonpacket_.command20.pipe_out & 0x7F)) << 21;
+                    sig ^= ((uint32_t)(nonpacket_.command20.power ? 1 : 0)) << 28;
+                    sig ^= ((uint32_t)((uint8_t)nonpacket_.command20.mode & 0x0F)) << 29;
+                    sig ^= ((uint32_t)((uint8_t)nonpacket_.command20.fanspeed)) * 2654435761u;
+                    sig ^= ((uint32_t)((uint8_t)nonpacket_.command20.wind_direction)) * 2246822519u;
+
+                    if (!debug_log_messages_on_change ||
+                        log_should_print(log_dedup_key(nonpacket_.src, "nonnasa", 0x0020), (double)sig, 0.0, 0))
+                    {
+
+                        LOGI("Cmd20 received: src=%s, wind_direction=%d, target_temp=%d, power=%d, mode=%d, fanspeed=%d",
+                             nonpacket_.src.c_str(),
+                             (uint8_t)nonpacket_.command20.wind_direction,
+                             nonpacket_.command20.target_temp,
+                             nonpacket_.command20.power,
+                             (uint8_t)nonpacket_.command20.mode,
+                             (uint8_t)nonpacket_.command20.fanspeed);
+                    }
+                }
+
+                size_t before_size = nonnasa_requests.size();
                 nonnasa_requests.remove_if([&](const NonNasaRequestQueueItem &item)
                                            { return item.time_sent > 0 &&
                                                     nonpacket_.src == item.request.dst &&
                                                     item.request.target_temp == nonpacket_.command20.target_temp &&
                                                     item.request.fanspeed == nonpacket_.command20.fanspeed &&
                                                     item.request.mode == nonpacket_.command20.mode &&
-                                                    item.request.power == nonpacket_.command20.power; });
+                                                    item.request.power == nonpacket_.command20.power &&
+                                                    item.request.wind_direction == nonpacket_.command20.wind_direction; });
+                size_t after_size = nonnasa_requests.size();
+                if (before_size != after_size)
+                {
+                    LOGD("Cmd20: Removed %zu matching request(s) for %s (backup ack)",
+                         before_size - after_size, nonpacket_.src.c_str());
+                }
 
                 // If a state update comes through after a control message has been sent, but before it
                 // has been acknowledged, it should be ignored. This prevents the UI status bouncing
@@ -575,6 +788,15 @@ namespace esphome
                         break;
                     }
                 }
+
+                // Publish EVA (evaporator) temperatures - pipe_in/pipe_out are equivalent to eva_in/eva_out
+                // These are sensor readings and should always be published, regardless of pending control messages
+                // Compare to CmdC0 and Cmd8D handlers which explicitly do not check for pending control messages
+                // Cast to int8_t first to preserve sign (uint8_t wraps negative values), then to float
+                float pipe_in_temp = static_cast<float>(static_cast<int8_t>(nonpacket_.command20.pipe_in));
+                float pipe_out_temp = static_cast<float>(static_cast<int8_t>(nonpacket_.command20.pipe_out));
+                target->set_indoor_eva_in_temperature(nonpacket_.src, pipe_in_temp);
+                target->set_indoor_eva_out_temperature(nonpacket_.src, pipe_out_temp);
 
                 if (!pending_control_message)
                 {
@@ -594,10 +816,63 @@ namespace esphome
                     target->set_fanmode(nonpacket_.src, nonnasa_fanspeed_to_fanmode(nonpacket_.command20.fanspeed));
                     // TODO
                     target->set_altmode(nonpacket_.src, 0);
-                    // TODO
-                    target->set_swing_horizontal(nonpacket_.src, false);
-                    target->set_swing_vertical(nonpacket_.src, false);
+                    // Cmd20 swing decode: converting wind_direction to vertical/horizontal booleans
+                    target->set_swing_horizontal(nonpacket_.src,
+                                                 (nonpacket_.command20.wind_direction == NonNasaWindDirection::Horizontal) ||
+                                                     (nonpacket_.command20.wind_direction == NonNasaWindDirection::FourWay));
+                    target->set_swing_vertical(nonpacket_.src,
+                                               (nonpacket_.command20.wind_direction == NonNasaWindDirection::Vertical) ||
+                                                   (nonpacket_.command20.wind_direction == NonNasaWindDirection::FourWay));
                 }
+            }
+            else if (nonpacket_.cmd == NonNasaCommand::CmdC0)
+            {
+                // CmdC0 comes from the outdoor unit and contains outdoor temperature
+                // The temperature is already in Celsius (after subtracting 55 from raw value)
+                // Note: No pending control message check needed here since CmdC0 comes from the
+                // outdoor unit (typically "c8"), while control messages are sent to indoor units.
+                // Outdoor temperature updates are independent status data and should always be processed.
+                // Cast to int8_t first to preserve sign (uint8_t wraps negative values), then to float
+                float temp = static_cast<float>(static_cast<int8_t>(nonpacket_.commandC0.outdoor_unit_outdoor_temp_c));
+                target->set_outdoor_temperature(nonpacket_.src, temp);
+            }
+            else if (nonpacket_.cmd == NonNasaCommand::Cmd8D)
+            {
+                // Cmd8D comes from the outdoor unit and contains power/energy sensor data
+                // Note: No pending control message check needed here since Cmd8D comes from the
+                // outdoor unit (typically "c8"), while control messages are sent to indoor units.
+                // Outdoor power/energy updates are independent status data and should always be processed.
+                // Note: Following NASA protocol approach - publish raw current value, sensor filter will apply.
+                target->set_outdoor_instantaneous_power(nonpacket_.src, nonpacket_.command8D.inverter_power_w);
+                target->set_outdoor_current(nonpacket_.src, nonpacket_.command8D.inverter_current_a);
+                target->set_outdoor_voltage(nonpacket_.src, nonpacket_.command8D.inverter_voltage_v);
+
+                // Calculate cumulative energy by integrating power over time using trapezoidal rule
+                // The helper function handles all edge cases: wraparound, first update, time delta validation
+                CumulativeEnergyTracker &tracker = cumulative_energy_trackers_[nonpacket_.src];
+                const uint32_t now = millis();
+                update_cumulative_energy_tracker(tracker, nonpacket_.command8D.inverter_power_w, now);
+
+                // Publish cumulative energy
+                // Sensor has filter multiply: 0.001 and unit is kWh
+                // NASA protocol publishes raw value in Wh, filter converts to kWh
+                // So we publish in Wh (accumulated_energy_kwh * 1000), filter converts to kWh
+                // Convert from double to float for API (API requires float)
+                float cumulative_energy_wh = static_cast<float>(tracker.accumulated_energy_kwh * 1000.0);
+                target->set_outdoor_cumulative_energy(nonpacket_.src, cumulative_energy_wh);
+            }
+            else if (nonpacket_.cmd == NonNasaCommand::CmdF0)
+            {
+                // CmdF0 comes from the outdoor unit and contains error code and status information
+                // Note: No pending control message check needed here since CmdF0 comes from the
+                // outdoor unit (typically "c8"), while control messages are sent to indoor units.
+                // Outdoor error code updates are independent status data and should always be processed.
+                int error_code = static_cast<int>(nonpacket_.commandF0.outdoor_unit_error_code);
+                if (debug_log_messages && error_code != 0)
+                {
+                    LOGW("s:%s d:%s CmdF0 outdoor_unit_error_code %d", nonpacket_.src.c_str(), nonpacket_.dst.c_str(), error_code);
+                }
+                target->set_error_code(nonpacket_.src, error_code);
             }
             else if (nonpacket_.cmd == NonNasaCommand::CmdC6)
             {
@@ -636,14 +911,38 @@ namespace esphome
                 // It's unknown why the first data byte must be odd.
                 if (non_nasa_keepalive)
                 {
-                    delay(30);
-                    send_register_controller(target);
+                    const uint32_t now = millis();
+                    // rate limit
+                    // Wrap-safe elapsed time (unsigned subtraction works across millis() rollover)
+                    const uint32_t elapsed_ms = now - last_keepalive_sent_ms_;
+
+                    if (elapsed_ms >= KEEPALIVE_MIN_INTERVAL_MS)
+                    {
+                        pending_keepalive_ = true;
+                        pending_keepalive_due_ms_ = now + KEEPALIVE_DELAY_MS;
+                    }
                 }
             }
         }
 
         void NonNasaProtocol::protocol_update(MessageTarget *target)
         {
+            // non-blocking keepalive send (scheduled from broadcast request)
+            if (non_nasa_keepalive && pending_keepalive_)
+            {
+                const uint32_t now = millis();
+                if ((int32_t)(now - pending_keepalive_due_ms_) >= 0)
+                {
+                    send_register_controller(target);
+                    last_keepalive_sent_ms_ = now;
+                    pending_keepalive_ = false;
+                }
+            }
+            else if (!non_nasa_keepalive)
+            {
+                pending_keepalive_ = false;
+            }
+
             // If we're not currently registered, keep sending a registration request until it has
             // been confirmed by the outdoor unit.
             if (!controller_registered)

@@ -6,6 +6,7 @@
 #include "esphome/core/helpers.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/components/sensor/sensor.h"
+#include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/select/select.h"
 #include "esphome/components/number/number.h"
@@ -29,10 +30,14 @@ namespace esphome
       void apply_fanmode_from_device(FanMode value);
       void apply_altmode_from_device(const AltModeDesc &mode);
 
+      void set_map_auto_to_heat_cool(bool value) { map_auto_to_heat_cool_ = value; }
+      bool get_map_auto_to_heat_cool() const { return map_auto_to_heat_cool_; }
+
       Samsung_AC_Device *device;
 
     protected:
       void set_alt_mode_by_name(ProtocolRequest &request, const AltModeName &name);
+      bool map_auto_to_heat_cool_{false};
     };
 
     class Samsung_AC_Number : public number::Number
@@ -106,6 +111,13 @@ namespace esphome
         this->protocol = get_protocol(address);
       }
 
+      void set_map_auto_to_heat_cool(bool value)
+      {
+        map_auto_to_heat_cool_ = value;
+        if (climate != nullptr)
+          climate->set_map_auto_to_heat_cool(value);
+      }
+
       std::string address;
       sensor::Sensor *room_temperature{nullptr};
       sensor::Sensor *outdoor_temperature{nullptr};
@@ -116,6 +128,9 @@ namespace esphome
       sensor::Sensor *outdoor_cumulative_energy{nullptr};
       sensor::Sensor *outdoor_current{nullptr};
       sensor::Sensor *outdoor_voltage{nullptr};
+      text_sensor::TextSensor *outdoor_operation_odu_mode_text{nullptr};
+      text_sensor::TextSensor *outdoor_operation_heatcool_text{nullptr};
+
       Samsung_AC_Number *target_temperature{nullptr};
       Samsung_AC_Number *water_outlet_target{nullptr};
       Samsung_AC_Number *target_water_temperature{nullptr};
@@ -319,6 +334,7 @@ namespace esphome
       {
         climate = value;
         climate->device = this;
+        climate->set_map_auto_to_heat_cool(map_auto_to_heat_cool_);
       }
 
       void update_target_temperature(float value)
@@ -430,7 +446,7 @@ namespace esphome
           }
 
           climate->apply_altmode_from_device(*mode);
-          
+
           climate->publish_state();
         }
       }
@@ -456,6 +472,11 @@ namespace esphome
         protocol->publish_request(target, address, request);
       }
 
+      bool supports_fan_modes()
+      {
+        return supports_fan_modes_;
+      }
+
       bool supports_horizontal_swing()
       {
         return supports_horizontal_swing_;
@@ -464,6 +485,11 @@ namespace esphome
       bool supports_vertical_swing()
       {
         return supports_vertical_swing_;
+      }
+
+      void set_supports_fan_modes(bool value)
+      {
+        supports_fan_modes_ = value;
       }
 
       bool supports_turbo_mode()
@@ -511,6 +537,177 @@ namespace esphome
           protocol->protocol_update(target);
         }
       }
+      void set_outdoor_operation_odu_mode_text_sensor(text_sensor::TextSensor *sensor)
+      {
+        outdoor_operation_odu_mode_text = sensor;
+      }
+
+      void set_outdoor_operation_heatcool_text_sensor(text_sensor::TextSensor *sensor)
+      {
+        outdoor_operation_heatcool_text = sensor;
+      }
+      void update_enum_text(uint16_t message_number, int value)
+      {
+        // 0x8003 -> ENUM_out_operation_heatcool
+        if (message_number == 0x8003)
+        {
+          if (outdoor_operation_heatcool_text != nullptr)
+          {
+            std::string s;
+            switch (value)
+            {
+            case 0:
+              s = "Undefined";
+              break;
+            case 1:
+              s = "Cool";
+              break;
+            case 2:
+              s = "Heat";
+              break;
+            case 3:
+              s = "CoolMain";
+              break;
+            case 4:
+              s = "HeatMain";
+              break;
+            default:
+              s = std::string("Unknown(") + std::to_string(value) + ")";
+              break;
+            }
+            outdoor_operation_heatcool_text->publish_state(s);
+          }
+          return;
+        }
+
+        // 0x8001 -> ENUM_out_operation_odu_mode
+        if (message_number == 0x8001)
+        {
+          if (outdoor_operation_odu_mode_text != nullptr)
+          {
+            std::string s;
+            switch (value)
+            {
+            case 0:
+              s = "OP_STOP";
+              break;
+            case 1:
+              s = "OP_SAFETY";
+              break;
+            case 2:
+              s = "OP_NORMAL";
+              break;
+            case 3:
+              s = "OP_BALANCE";
+              break;
+            case 4:
+              s = "OP_RECOVERY";
+              break;
+            case 5:
+              s = "OP_DEICE";
+              break;
+            case 6:
+              s = "OP_COMPDOWN";
+              break;
+            case 7:
+              s = "OP_PROHIBIT";
+              break;
+            case 8:
+              s = "OP_LINEJIG";
+              break;
+            case 9:
+              s = "OP_PCBJIG";
+              break;
+            case 10:
+              s = "OP_TEST";
+              break;
+            case 11:
+              s = "OP_CHARGE";
+              break;
+            case 12:
+              s = "OP_PUMPDOWN";
+              break;
+            case 13:
+              s = "OP_PUMPOUT";
+              break;
+            case 14:
+              s = "OP_VACCUM";
+              break;
+            case 15:
+              s = "OP_CALORYJIG";
+              break;
+            case 16:
+              s = "OP_PUMPDOWNSTOP";
+              break;
+            case 17:
+              s = "OP_SUBSTOP";
+              break;
+            case 18:
+              s = "OP_CHECKPIPE";
+              break;
+            case 19:
+              s = "OP_CHECKREF";
+              break;
+            case 20:
+              s = "OP_FPTJIG";
+              break;
+            case 21:
+              s = "OP_NONSTOP_HEAT_COOL_CHANGE";
+              break;
+            case 22:
+              s = "OP_AUTO_INSPECT";
+              break;
+            case 23:
+              s = "OP_ELECTRIC_DISCHARGE";
+              break;
+            case 24:
+              s = "OP_SPLIT_DEICE";
+              break;
+            case 25:
+              s = "OP_INVETER_CHECK";
+              break;
+            case 26:
+              s = "OP_NONSTOP_DEICE";
+              break;
+            case 27:
+              s = "OP_REM_TEST";
+              break;
+            case 28:
+              s = "OP_RATING";
+              break;
+            case 29:
+              s = "OP_PC_TEST";
+              break;
+            case 30:
+              s = "OP_PUMPDOWN_THERMOOFF";
+              break;
+            case 31:
+              s = "OP_3PHASE_TEST";
+              break;
+            case 32:
+              s = "OP_SMARTINSTALL_TEST";
+              break;
+            case 33:
+              s = "OP_DEICE_PERFORMANCE_TEST";
+              break;
+            case 34:
+              s = "OP_INVERTER_FAN_PBA_CHECK";
+              break;
+            case 35:
+              s = "OP_AUTO_PIPE_PAIRING";
+              break;
+            case 36:
+              s = "OP_AUTO_CHARGE";
+              break;
+            default:
+              s = std::string("Unknown(") + std::to_string(value) + ")";
+              break;
+            }
+            outdoor_operation_odu_mode_text->publish_state(s);
+          }
+          return;
+        }
+      }
 
       void set_sleep_mode_switch(Samsung_AC_Switch *sw) {
         sleep_mode = sw;
@@ -556,6 +753,9 @@ namespace esphome
 
 
     protected:
+      bool supports_fan_modes_{true};
+      bool map_auto_to_heat_cool_{false};
+
       bool supports_horizontal_swing_{false};
       bool supports_vertical_swing_{false};
       bool supports_turbo_mode_{false};
@@ -583,7 +783,48 @@ namespace esphome
         {
           auto opt = mode_to_climatemode(_cur_mode.value());
           if (opt.has_value())
-            climate->mode = opt.value();
+          {
+            if (climate->get_map_auto_to_heat_cool() && _cur_mode.value() == Mode::Auto)
+              climate->mode = climate::ClimateMode::CLIMATE_MODE_HEAT_COOL;
+            else
+              climate->mode = opt.value();
+          }
+        }
+
+        // action (hvac_action in Home Assistant)
+        if (climate->mode == climate::CLIMATE_MODE_OFF)
+        {
+          climate->action = climate::CLIMATE_ACTION_OFF;
+        }
+        else if (
+          (_cur_defrosting.has_value() && _cur_defrosting.value()) ||
+          (_cur_outdoor_instantaneous_power.has_value() &&
+           _cur_outdoor_instantaneous_power.value() < 1.0f)  // kW
+        )
+        {
+          // ESPHome doesn't have a DEFROSTING action; expose defrosting via binary_sensor and map in HA.
+          climate->action = climate::CLIMATE_ACTION_IDLE;
+        }
+        else
+        {
+          switch (climate->mode)
+          {
+          case climate::CLIMATE_MODE_COOL:
+            climate->action = climate::CLIMATE_ACTION_COOLING;
+            break;
+          case climate::CLIMATE_MODE_HEAT:
+            climate->action = climate::CLIMATE_ACTION_HEATING;
+            break;
+          case climate::CLIMATE_MODE_DRY:
+            climate->action = climate::CLIMATE_ACTION_DRYING;
+            break;
+          case climate::CLIMATE_MODE_FAN_ONLY:
+            climate->action = climate::CLIMATE_ACTION_FAN;
+            break;
+          default:
+            climate->action = climate::CLIMATE_ACTION_IDLE;
+            break;
+          }
         }
 
         // action (hvac_action in Home Assistant)

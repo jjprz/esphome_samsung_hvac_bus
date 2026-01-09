@@ -22,16 +22,17 @@ namespace esphome
       traits.set_visual_max_temperature(30);
 
       traits.set_supported_modes({climate::CLIMATE_MODE_OFF,
-                                  climate::CLIMATE_MODE_AUTO,
+                                  this->get_map_auto_to_heat_cool() ? climate::CLIMATE_MODE_HEAT_COOL : climate::CLIMATE_MODE_AUTO,
                                   climate::CLIMATE_MODE_COOL,
                                   climate::CLIMATE_MODE_DRY,
                                   climate::CLIMATE_MODE_FAN_ONLY,
                                   climate::CLIMATE_MODE_HEAT});
 
-      traits.set_supported_fan_modes({climate::CLIMATE_FAN_HIGH,
-                                      climate::CLIMATE_FAN_MEDIUM,
-                                      climate::CLIMATE_FAN_LOW,
-                                      climate::CLIMATE_FAN_AUTO});
+      if (device->supports_fan_modes()) {
+        traits.set_supported_fan_modes({climate::CLIMATE_FAN_HIGH,
+                                        climate::CLIMATE_FAN_MEDIUM,
+                                        climate::CLIMATE_FAN_LOW,
+                                        climate::CLIMATE_FAN_AUTO});
 
       if (device->supports_turbo_mode()) {
         static const char *CUSTOM_FAN_MODES[] = {"Turbo"};
@@ -104,7 +105,14 @@ namespace esphome
         }
         else
         {
-          request.mode = climatemode_to_mode(modeOpt.value());
+          if (this->get_map_auto_to_heat_cool() && modeOpt.value() == climate::ClimateMode::CLIMATE_MODE_HEAT_COOL)
+          {
+            request.mode = Mode::Auto;  // HA Heat/Cool -> Samsung Auto
+          }
+          else
+          {
+            request.mode = climatemode_to_mode(modeOpt.value());
+          }
         }
       }
 
@@ -210,3 +218,4 @@ namespace esphome
 
   } // namespace samsung_ac
 } // namespace esphome
+

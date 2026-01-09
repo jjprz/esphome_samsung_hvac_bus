@@ -52,9 +52,14 @@ external_components:
 # Configuration of AC component
 samsung_ac:
 
-  # For NonNASA devices the following option can be enabled to prevent the device from sleeping when idle. This allows
-  # values like internal and external temperature to continue to be tracked when the device isn't in use.
+  # non_nasa_keepalive: Prevents some Non-NASA units from sleeping when idle.
+  # This increases bus traffic slightly; disable if you don't need idle telemetry.
   non_nasa_keepalive: true
+
+  # Enable 'debug_log_messages_on_change' to log sensor data changes within 120 seconds
+  # When set to true, this option logs the sensor data only when the value changes within a 120-second interval,
+  # reducing redundant log messages and focusing on real-time data changes.
+  debug_log_messages_on_change: true  # Enable log messages on change within 120 seconds
   
   # When enabled (set to true), this option will log the messages associated with undefined codes on the device. This is useful for debugging and identifying any unexpected or unknown codes that the device may receive during operation.
   debug_log_undefined_messages: false
@@ -66,10 +71,12 @@ samsung_ac:
   # see https://microcontrollerslab.com/rs485-serial-communication-esp32-esp8266-tutorial/ for wiring
   #flow_control_pin: GPIO4
 
-  # Capabilities configure the features that all devices of your AC system have (all parts of this section are optional). 
-  # All capabilities are off by default, you need to enable only those your devices have.
-  # You can override or configure them also on a per-device basis (look below for that).
-  capabilities: 
+  # Capabilities: Define which features your AC system supports.
+  # - fan_modes is enabled by default (fan speed controls will be shown in HA)
+  # - vertical_swing and horizontal_swing are disabled by default
+  # You can set these globally here, or override per indoor unit under `devices:`
+  capabilities:
+    fan_modes: true
     vertical_swing: true
     horizontal_swing: true
     turbo_mode: true
@@ -96,6 +103,9 @@ samsung_ac:
     - address: "20.00.00" # Indoor device address 
       # Each property below is optional (climate, room_temperature etc.) - you can delete those which you dont need.
       # For the names we suggest to choose a combination of room name and the thing it controls. 
+
+      # Optional: show Samsung Auto as HA Heat/Cool (allows setting target temp in HA UI)
+      map_auto_to_heat_cool: false
 
       # Configures/overrides the capabilites for this devices. 
       # Look above for all options.
@@ -126,6 +136,14 @@ samsung_ac:
       # measured below. This property can be used to correct that value.
       room_temperature_offset: -1.4
 
+      # EVA (Evaporator) temperatures - measures refrigerant temperatures at the indoor unit
+      # These sensors help monitor system performance and diagnose issues
+      # Supported on both NASA and Non-NASA devices
+      indoor_eva_in_temperature:
+        name: "Kitchen EVA In temperature"
+      indoor_eva_out_temperature:
+        name: "Kitchen EVA Out temperature"
+
       # Only supported on NASA devices
       room_humidity:
         name: "Kitchen humidity"
@@ -137,7 +155,15 @@ samsung_ac:
       # you can automatically send detailed error messages to your mobile devices based on the captured error codes.
       error_code:
         name: error_code
-        
+
+       # Outdoor operation mode text sensor
+      outdoor_operation_odu_mode:
+        name: "ODU Mode"  # Displays the operational mode of the outdoor unit
+
+      # Outdoor operation heat/cool mode text sensor
+      outdoor_operation_heatcool:
+        name: "ODU Heat/Cool"  # Displays whether the outdoor unit is in heating or cooling mode
+
       # This sensor measures the instantaneous power consumption of the outdoor unit in Watts.
       # The captured value represents the current power draw of the outdoor HVAC components, helping track energy usage patterns.
       outdoor_instantaneous_power:
@@ -167,3 +193,5 @@ samsung_ac:
         name: "Hotwater Mode"
       outdoor_temperature: # Should be used with outdoor device address
         name: "Outdoor temperature"
+
+

@@ -99,6 +99,15 @@ namespace esphome
             std::string to_string();
         };
 
+        struct NonNasaCommand8D // from outdoor unit
+        {
+            float inverter_current_a = 0;
+            float inverter_voltage_v = 0;
+            float inverter_power_w = 0;
+
+            std::string to_string();
+        };
+
         struct NonNasaCommandF1 // from outdoor unit
         {
             uint16_t outdoor_unit_EEV_A = 0;
@@ -136,6 +145,7 @@ namespace esphome
         {
             Cmd20 = 0x20,
             Cmd54 = 0x54,
+            Cmd8D = 0x8d,
             CmdC0 = 0xc0,
             CmdC1 = 0xc1,
             CmdC6 = 0xc6,
@@ -160,6 +170,7 @@ namespace esphome
             {
                 NonNasaCommand20 command20;
                 NonNasaCommandRaw command54; // Control message ack
+                NonNasaCommand8D command8D;
                 NonNasaCommandC0 commandC0;
                 NonNasaCommandC1 commandC1;
                 NonNasaCommandC6 commandC6;
@@ -183,6 +194,7 @@ namespace esphome
             NonNasaFanspeed fanspeed = NonNasaFanspeed::Auto;
             NonNasaMode mode = NonNasaMode::Heat;
             bool power = false;
+            NonNasaWindDirection wind_direction = NonNasaWindDirection::Stop;
 
             std::vector<uint8_t> encode();
             std::string to_string();
@@ -202,6 +214,9 @@ namespace esphome
         extern std::list<NonNasaRequestQueueItem> nonnasa_requests;
         extern bool controller_registered;
         extern bool indoor_unit_awake;
+
+        NonNasaWindDirection swingmode_to_wind_direction(SwingMode swing);
+        uint8_t encode_request_wind_direction(NonNasaWindDirection wind_dir);
 
         DecodeResult try_decode_non_nasa_packet(std::vector<uint8_t> &data);
         void process_non_nasa_packet(MessageTarget *target);
