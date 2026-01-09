@@ -82,10 +82,10 @@ CONF_DEVICE_OUT_CONTROL_WATTMETER_ALL_UNIT_ACCUM = "outdoor_instantaneous_power"
 CONF_DEVICE_OUT_CONTROL_WATTMETER_1W_1MIN_SUM = "outdoor_cumulative_energy"
 CONF_DEVICE_OUT_SENSOR_CT1 = "outdoor_current"
 CONF_DEVICE_OUT_SENSOR_VOLTAGE = "outdoor_voltage"
+
 CONF_DEVICE_SLEEP_MODE = "sleep_mode"
 CONF_DEVICE_OUTING_MODE = "outing_mode"
 CONF_DEVICE_QUIET_MODE = "quiet_mode"
-
 
 CONF_CAPABILITIES = "capabilities"
 CONF_CAPABILITIES_HORIZONTAL_SWING = "horizontal_swing"
@@ -483,9 +483,18 @@ async def to_code(config):
                 sensor.new_sensor,
                 var_dev.set_outdoor_voltage_sensor,
             ),
-            CONF_DEVICE_SLEEP_MODE: (switch.new_switch, var_dev.set_sleep_mode_switch),
-            CONF_DEVICE_OUTING_MODE: (switch.new_switch, var_dev.set_outing_mode_switch),
-            CONF_DEVICE_QUIET_MODE: (switch.new_switch, var_dev.set_quiet_mode_switch),
+            CONF_DEVICE_SLEEP_MODE: (
+                switch.new_switch,
+                var_dev.set_sleep_mode_switch,
+            ),
+            CONF_DEVICE_OUTING_MODE: (
+                switch.new_switch,
+                var_dev.set_outing_mode_switch
+            ),
+            CONF_DEVICE_QUIET_MODE: (
+                switch.new_switch,
+                var_dev.set_quiet_mode_switch
+            ),
         }
 
         # Iterate over the actions
