@@ -71,7 +71,7 @@ namespace esphome
         {
             Undefiend = 0,
             ENUM_in_operation_power = 0x4000,
-            ENUM_in_operation_defrosting = 0x402E,
+            ENUM_in_operation_defrosting = 0x402e,
             ENUM_in_operation_automatic_cleaning = 0x4111,
             ENUM_in_water_heater_power = 0x4065,
             ENUM_in_operation_mode = 0x4001,
@@ -95,8 +95,8 @@ namespace esphome
             LVAR_OUT_CONTROL_WATTMETER_ALL_UNIT_ACCUM = 0x8414,
             VAR_OUT_SENSOR_CT1 = 0x8217,
             LVAR_NM_OUT_SENSOR_VOLTAGE = 0x24fc,
-            ENUM_IN_OUTING_MODE = 0x406D,
-            ENUM_IN_QUIET_MODE = 0x406E,
+            ENUM_in_outing_mode = 0x406d,
+            ENUM_in_quiet_mode = 0x406e,
         };
 
         struct Address

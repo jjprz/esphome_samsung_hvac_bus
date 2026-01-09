@@ -503,14 +503,14 @@ namespace esphome
 
                 if (request.outing_mode)
                 {
-                    MessageSet outing(MessageNumber::ENUM_in_outing_mode); // 0x406D
+                    MessageSet outing(MessageNumber::ENUM_in_outing_mode); // 0x406d
                     outing.value = request.outing_mode.value() ? 1 : 0;
                     packet.messages.push_back(outing);
                 }
 
                 if (request.quiet_mode)
                 {
-                    MessageSet quiet(MessageNumber::ENUM_in_quiet_mode); // 0x406E
+                    MessageSet quiet(MessageNumber::ENUM_in_quiet_mode); // 0x406e
                     quiet.value = request.quiet_mode.value() ? 1 : 0;
                     packet.messages.push_back(quiet);
                 }
@@ -1018,11 +1018,17 @@ namespace esphome
             case 0x4012:
                 LOG_MESSAGE(ENUM_in_louver_hl_part_swing, message.value, source, dest);
                 break;
-            case 0x4060:
-                LOG_MESSAGE(ENUM_IN_ALTERNATIVE_MODE, message.value, source, dest);
+            case 0x402e:
+                LOG_MESSAGE(ENUM_in_operation_defrosting, message.value, source, dest);
                 break;
-            case 0x406E:
-                LOG_MESSAGE(ENUM_IN_QUIET_MODE, message.value, source, dest);
+            case 0x4060:
+                LOG_MESSAGE(ENUM_in_alt_mode, message.value, source, dest);
+                break;
+            case 0x406d:
+                LOG_MESSAGE(ENUM_in_outing_mode, message.value, source, dest);
+                break;
+            case 0x406e:
+                LOG_MESSAGE(ENUM_in_quiet_mode, message.value, source, dest);
                 break;
             case 0x4119:
                 LOG_MESSAGE(ENUM_IN_OPERATION_POWER_ZONE1, message.value, source, dest);
@@ -1159,7 +1165,6 @@ namespace esphome
             case 0x4027:
             case 0x4028:
             case 0x402d:
-            case 0x402e:
             case 0x4035:
             case 0x403e:
             case 0x403f:
