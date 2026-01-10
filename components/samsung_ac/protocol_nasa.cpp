@@ -1130,11 +1130,11 @@ namespace esphome
                 break;
 
             case MessageNumber::ENUM_in_outing_mode:
-                LOG_MESSAGE(ENUM_in_outing_mode, (double)message.value, source, dest);
+                LOG_MESSAGE(ENUM_in_outing_mode, message.value, source, dest);
                 break;
 
             case MessageNumber::ENUM_in_quiet_mode:
-                LOG_MESSAGE(ENUM_in_quiet_mode, (double)message.value, source, dest);
+                LOG_MESSAGE(ENUM_in_quiet_mode, message.value, source, dest);
                 break;
 
             case MessageNumber::ENUM_IN_OPERATION_POWER_ZONE1:
@@ -1301,6 +1301,8 @@ namespace esphome
             case 0x4047:
             case 0x4048:
             case 0x4059:
+            case 0x406d:
+            case 0x406e:
             case 0x4074:
             case 0x407d:
             case 0x407e:
