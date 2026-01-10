@@ -738,17 +738,26 @@ namespace esphome
 
       void update_sleep_mode(bool value) {
         _cur_sleep_mode = value;
-        if (sleep_mode) sleep_mode->publish_state(value);
+        if (sleep_mode != nullptr)
+          sleep_mode->publish_state(value);
+        if (climate != nullptr)
+          calc_and_publish_mode();
       }
 
       void update_outing_mode(bool value) {
         _cur_outing_mode = value;
-        if (outing_mode) outing_mode->publish_state(value);
+        if (outing_mode != nullptr)
+          outing_mode->publish_state(value);
+        if (climate != nullptr)
+          calc_and_publish_mode();
       }
 
       void update_quiet_mode(bool value) {
         _cur_quiet_mode = value;
-        if (quiet_mode) quiet_mode->publish_state(value);
+        if (quiet_mode != nullptr)
+          quiet_mode->publish_state(value);
+        if (climate != nullptr)
+          calc_and_publish_mode();
       }
 
 
