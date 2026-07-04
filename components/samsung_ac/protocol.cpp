@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include <algorithm>
 #include "util.h"
 #include "log.h"
 #include "protocol_nasa.h"
@@ -23,6 +24,7 @@ namespace esphome
         }
 
         bool non_nasa_keepalive = false;
+        uint16_t non_nasa_tx_delay_ms = 0;
 
         ProtocolProcessing protocol_processing = ProtocolProcessing::Auto;
 
@@ -35,7 +37,10 @@ namespace esphome
             // and that one new proper packet will continue with the next data read
 
             // find next value of 0x32, and retry with that one
-            return std::find(data.begin() + from, data.end(), 0x32) - data.begin();
+            // return std::find(data.begin() + from, data.end(), 0x32) - data.begin();
+            return std::find(data.begin() + from, data.end(),
+                             static_cast<unsigned char>(0x32))
+                   - data.begin();
         }
 
         // This functions is designed to run after a new value was added
