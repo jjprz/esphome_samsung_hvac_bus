@@ -535,6 +535,12 @@ namespace esphome
                     automatic_cleaning.value = request.automatic_cleaning.value() ? 1 : 0;
                     packet.messages.push_back(automatic_cleaning);
                 }
+                for (const auto &dbg : request.debug_messages)
+                {
+                    MessageSet raw(static_cast<MessageNumber>(dbg.first));
+                    raw.value = dbg.second;
+                    packet.messages.push_back(raw);
+                }
                 if (request.quiet_mode)
                 {
                     MessageSet quiet_mode(MessageNumber::ENUM_in_quiet_mode);
@@ -634,6 +640,9 @@ namespace esphome
 
             if (request.quiet_mode)
                 queued.quiet_mode = request.quiet_mode;
+
+            for (const auto &dbg : request.debug_messages)
+                queued.debug_messages.push_back(dbg);
 
             if (request.filter_reset)
                 queued.filter_reset = request.filter_reset;

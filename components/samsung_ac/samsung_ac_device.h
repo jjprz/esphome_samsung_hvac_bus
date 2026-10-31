@@ -284,6 +284,15 @@ namespace esphome
         };
       }
 
+      // DEBUG ONLY, not for upstream: send any NASA message to this device
+      void debug_send_nasa(int number, int value)
+      {
+        ESP_LOGW("samsung_ac", "DEBUG send 0x%04x = %d to %s", number, value, address.c_str());
+        ProtocolRequest request;
+        request.debug_messages.push_back({static_cast<uint16_t>(number), value});
+        publish_request(request);
+      }
+
       void set_quiet_mode_switch(Samsung_AC_Switch *switch_)
       {
         quiet_mode = switch_;
