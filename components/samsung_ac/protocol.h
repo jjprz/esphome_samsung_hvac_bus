@@ -82,7 +82,7 @@ namespace esphome
             virtual void register_address(const std::string address) = 0;
             virtual void set_power(const std::string address, bool value) = 0;
             virtual void set_automatic_cleaning(const std::string address, bool value) = 0;
-            virtual void set_quiet_mode(const std::string address, bool value) = 0;
+            virtual void set_silence_mode(const std::string address, bool value) = 0;
             virtual void set_water_heater_power(const std::string address, bool value) = 0;
             virtual void set_room_temperature(const std::string address, float value) = 0;
             virtual void set_target_temperature(const std::string address, float value) = 0;
@@ -112,7 +112,7 @@ namespace esphome
         public:
             optional<bool> power;
             optional<bool> automatic_cleaning;
-            optional<bool> quiet_mode;
+            optional<bool> silence_mode;
             std::vector<std::pair<uint16_t, long>> debug_messages; // DEBUG ONLY, not for upstream
             optional<bool> filter_reset;
             optional<bool> water_heater_power;
