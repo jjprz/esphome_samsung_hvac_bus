@@ -1,6 +1,8 @@
 #pragma once
 
 #include <set>
+#include <utility>
+#include <vector>
 #include "esphome/core/optional.h"
 #include "util.h"
 
@@ -114,6 +116,7 @@ namespace esphome
             optional<bool> power;
             optional<bool> automatic_cleaning;
             optional<bool> silence_mode;
+            std::vector<std::pair<uint16_t, long>> debug_messages; // DEBUG ONLY, not for upstream
             optional<bool> filter_reset;
             optional<bool> water_heater_power;
             optional<Mode> mode;
